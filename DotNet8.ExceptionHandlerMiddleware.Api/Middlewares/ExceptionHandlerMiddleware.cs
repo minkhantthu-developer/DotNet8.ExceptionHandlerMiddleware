@@ -1,81 +1,73 @@
-﻿
-using DotNet8.ExceptionHandlerMiddleware.Api.Extensions;
-using DotNet8.ExceptionHandlerMiddleware.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Text.Json;
+﻿namespace DotNet8.ExceptionHandlerMiddleware.Api.Middlewares;
 
-namespace DotNet8.ExceptionHandlerMiddleware.Api.Middlewares
+public class ExceptionHandlerMiddleware : IMiddleware
 {
-    public class ExceptionHandlerMiddleware : IMiddleware
+    private readonly ILogger<ExceptionHandlerMiddleware> _logger;
+    private readonly IWebHostEnvironment _env;
+    private readonly string UnhandleExceptionMessage =
+        "An unhandled error was occoured while executing the result.";
+
+    public ExceptionHandlerMiddleware(
+        ILogger<ExceptionHandlerMiddleware> logger, IWebHostEnvironment env)
     {
-        private readonly ILogger<ExceptionHandlerMiddleware> _logger;
-        private readonly IWebHostEnvironment _env;
-        private readonly string UnhandleExceptionMessage =
-            "An unhandled error was occoured while executing the result.";
+        _logger = logger;
+        _env = env;
+    }
 
-        public ExceptionHandlerMiddleware(
-            ILogger<ExceptionHandlerMiddleware> logger, IWebHostEnvironment env)
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        try
         {
-            _logger = logger;
-            _env = env;
+            await next(context);
         }
-
-        public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+        catch (Exception ex) when (context.RequestAborted.IsCancellationRequested)
         {
-            try
-            {
-                await next(context);
-            }
-            catch (Exception ex) when (context.RequestAborted.IsCancellationRequested)
-            {
 
-            }
-            catch (Exception ex)
-            {
-                ex.AddErrorCode();
-                _logger.LogError(ex, UnhandleExceptionMessage);
-                const string contentType = "application/problem+json";
-                context.Response.Clear();
-                context.Response.StatusCode = 500;
-                context.Response.ContentType = contentType; 
-
-                var problemDetail=GetProblemDetail(context,ex); 
-                var jsonStr= problemDetail.ToJson();
-                await context.Response.WriteAsync(jsonStr);
-            }
         }
-
-        public ProblemDetailModel GetProblemDetail(
-            in HttpContext context,
-            in Exception exception)
+        catch (Exception ex)
         {
-            var errorCode = exception.GetErrorCode();
-            var statusCode = context.Response.StatusCode;
-            var reasonPhase = ReasonPhrases.GetReasonPhrase(statusCode);
-            if (string.IsNullOrEmpty(reasonPhase))
-            {
-                reasonPhase = UnhandleExceptionMessage;
-            }
-            var problemDetail = new ProblemDetailModel
-            {
-                StatusCode = statusCode,
-                Title = reasonPhase,
-                Extenstions =
-                {
-                   [nameof(errorCode)] = errorCode,
-                }
+            ex.AddErrorCode();
+            _logger.LogError(ex, UnhandleExceptionMessage);
+            const string contentType = "application/problem+json";
+            context.Response.Clear();
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = contentType; 
 
-            };
-            if (!_env.IsDevelopment())
-            {
-                return problemDetail;
-            }
-            problemDetail.Detail = exception.Message;
-            problemDetail.Extenstions["treceId"] = context.TraceIdentifier;
-            problemDetail.Extenstions["data"] = exception.Data;
+            var problemDetail=GetProblemDetail(context,ex); 
+            var jsonStr= problemDetail.ToJson();
+            await context.Response.WriteAsync(jsonStr);
+        }
+    }
 
+    public ProblemDetailModel GetProblemDetail(
+        in HttpContext context,
+        in Exception exception)
+    {
+        var errorCode = exception.GetErrorCode();
+        var statusCode = context.Response.StatusCode;
+        var reasonPhase = ReasonPhrases.GetReasonPhrase(statusCode);
+        if (string.IsNullOrEmpty(reasonPhase))
+        {
+            reasonPhase = UnhandleExceptionMessage;
+        }
+        var problemDetail = new ProblemDetailModel
+        {
+            StatusCode = statusCode,
+            Title = reasonPhase,
+            Extenstions =
+            {
+               [nameof(errorCode)] = errorCode,
+            }
+
+        };
+        if (!_env.IsDevelopment())
+        {
             return problemDetail;
         }
+        problemDetail.Detail = exception.Message;
+        problemDetail.Extenstions["treceId"] = context.TraceIdentifier;
+        problemDetail.Extenstions["data"] = exception.Data;
+
+        return problemDetail;
     }
 }
