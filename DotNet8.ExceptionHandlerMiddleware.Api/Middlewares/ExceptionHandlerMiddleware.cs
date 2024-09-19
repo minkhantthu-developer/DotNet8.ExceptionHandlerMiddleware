@@ -22,16 +22,19 @@ public class ExceptionHandlerMiddleware : IMiddleware
         }
         catch (Exception ex) when (context.RequestAborted.IsCancellationRequested)
         {
-
+            _logger.LogDebug(ex, "Request was cancelled.");
+            context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+            context.Response.ContentType = "application/json";
+            var problemDetail = GetProblemDetail(context, ex);
+            await context.Response.WriteAsync(problemDetail.ToJson());
         }
         catch (Exception ex)
         {
             ex.AddErrorCode();
             _logger.LogError(ex, UnhandleExceptionMessage);
-            const string contentType = "application/problem+json";
             context.Response.Clear();
             context.Response.StatusCode = 500;
-            context.Response.ContentType = contentType; 
+            context.Response.ContentType = "application/json";
 
             var problemDetail=GetProblemDetail(context,ex); 
             var jsonStr= problemDetail.ToJson();
