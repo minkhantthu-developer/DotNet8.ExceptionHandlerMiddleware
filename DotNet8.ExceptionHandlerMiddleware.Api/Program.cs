@@ -1,6 +1,12 @@
+using DotNet8.ExceptionHandlerMiddleware.Api;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddTransient<ExceptionHandlerMiddleware>();
+//builder.Services.AddTransient<ExceptionHandlerMiddleware>();
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddProblemDetails();
 
 builder.Services.AddControllers();
 
@@ -10,7 +16,7 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.UseMiddleware<ExceptionHandlerMiddleware>();
+//app.UseMiddleware<ExceptionHandlerMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -19,6 +25,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseExceptionHandler();
+
 
 app.UseAuthorization();
 
