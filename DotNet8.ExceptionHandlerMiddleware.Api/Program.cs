@@ -1,5 +1,3 @@
-using DotNet8.ExceptionHandlerMiddleware.Api;
-
 var builder = WebApplication.CreateBuilder(args);
 
 //builder.Services.AddTransient<ExceptionHandlerMiddleware>();
@@ -27,7 +25,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseExceptionHandler();
-
 
 app.UseAuthorization();
 

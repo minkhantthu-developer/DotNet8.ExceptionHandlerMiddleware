@@ -42,7 +42,7 @@ public class ExceptionHandlerMiddleware : IMiddleware
         }
     }
 
-    public ProblemDetailModel GetProblemDetail(
+    public ProblemDetails GetProblemDetail(
         in HttpContext context,
         in Exception exception)
     {
@@ -53,11 +53,11 @@ public class ExceptionHandlerMiddleware : IMiddleware
         {
             reasonPhase = UnhandleExceptionMessage;
         }
-        var problemDetail = new ProblemDetailModel
+        var problemDetail = new ProblemDetails
         {
-            StatusCode = statusCode,
+            Status = statusCode,
             Title = reasonPhase,
-            Extenstions =
+            Extensions =
             {
                [nameof(errorCode)] = errorCode,
             }
@@ -68,8 +68,8 @@ public class ExceptionHandlerMiddleware : IMiddleware
             return problemDetail;
         }
         problemDetail.Detail = exception.Message;
-        problemDetail.Extenstions["treceId"] = context.TraceIdentifier;
-        problemDetail.Extenstions["data"] = exception.Data;
+        problemDetail.Extensions["treceId"] = context.TraceIdentifier;
+        problemDetail.Extensions["data"] = exception.Data;
 
         return problemDetail;
     }
